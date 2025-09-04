@@ -3,8 +3,8 @@ from typing import Any, List
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from ...core.database import get_db
-from ...schemas.map import MapCreate, MapUpdate, MapResponse, MapWithBoats
-from ...schemas.boat_listing import BoatWithPosition
+from ...schemas.map import MapCreate, MapUpdate, MapResponse
+from ...schemas.composite import MapWithBoats, BoatWithPosition
 from ...services.map import MapService
 from ...services.boat import BoatService
 from ..deps import get_current_user, get_current_admin_user

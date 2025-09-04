@@ -1,7 +1,12 @@
 # backend/app/schemas/boat_position.py
 from pydantic import BaseModel, Field, validator
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from datetime import datetime
+
+# Use TYPE_CHECKING to avoid circular imports
+if TYPE_CHECKING:
+    from .boat_listing import BoatListingResponse
+    from .map import MapResponse
 
 class BoatPositionBase(BaseModel):
     x: float = Field(default=200.0, ge=0)
@@ -19,7 +24,6 @@ class BoatPositionCreate(BoatPositionBase):
     
     @validator('color', 'stroke_color')
     def validate_colors(cls, v):
-        # Basic color validation - could be expanded
         valid_colors = [
             'red', 'blue', 'green', 'yellow', 'orange', 'purple', 'pink',
             'brown', 'gray', 'black', 'white', 'navy', 'teal', 'lime',
@@ -48,14 +52,3 @@ class BoatPositionResponse(BoatPositionBase):
     
     class Config:
         from_attributes = True
-
-# Composite schemas for complex operations
-class BoatWithPosition(BaseModel):
-    """Boat listing with its position data"""
-    boat: BoatListingResponse
-    position: Optional[BoatPositionResponse] = None
-
-class MapWithBoats(BaseModel):
-    """Map with all its boat positions"""
-    map: MapResponse
-    boats: list[BoatWithPosition] = []
