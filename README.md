@@ -216,6 +216,33 @@ pier11-marina-v2/
 - PostgreSQL 14+
 - Docker & Docker Compose
 
+### Database Setup
+
+1. **Install PostgreSQL** (if not already installed):
+   ```bash
+   brew install postgresql@14
+   brew services start postgresql@14
+   ```
+
+2. **Create Database User and Database**:
+   ```bash
+   # Connect to PostgreSQL
+   psql postgres
+   
+   # Inside PostgreSQL prompt, create user and database:
+   CREATE USER pier11 WITH PASSWORD 'password';
+   CREATE DATABASE pier11_marina OWNER pier11;
+   GRANT ALL PRIVILEGES ON DATABASE pier11_marina TO pier11;
+   
+   # Exit PostgreSQL
+   \q
+   ```
+
+3. **Verify Connection**:
+   ```bash
+   psql -U pier11 -d pier11_marina -h localhost
+   ```
+
 ### Quick Start
 ```bash
 # Clone repository
@@ -230,10 +257,21 @@ docker-compose up -d
 # Backend setup
 cd backend
 pip install -r requirements.txt
+
+# Initialize Alembic (if not already done)
+alembic init alembic
+
+# Edit alembic.ini to set database URL:
+# sqlalchemy.url = postgresql://pier11:password@localhost/pier11_marina
+
+# Create and apply migrations
+alembic revision --autogenerate -m "Initial migration"
 alembic upgrade head
+
+# Start the backend server
 uvicorn app.main:app --reload
 
-# Frontend setup
+# Frontend setup (in new terminal)
 cd frontend
 npm install
 npm run dev
@@ -242,11 +280,39 @@ npm run dev
 ### Environment Variables
 Copy `.env.example` to `.env` and configure:
 ```env
-DATABASE_URL=postgresql://user:pass@localhost/pier11
+DATABASE_URL=postgresql://pier11:password@localhost/pier11_marina
 SECRET_KEY=your-secret-key
 JWT_ALGORITHM=HS256
 JWT_EXPIRE_MINUTES=30
 ```
+
+### Troubleshooting Database Issues
+
+**PostgreSQL won't start:**
+```bash
+# Check service status
+brew services list | grep postgresql
+
+# Restart PostgreSQL
+brew services stop postgresql@14
+brew services start postgresql@14
+
+# Check logs
+tail -f /usr/local/var/log/postgresql@14.log
+```
+
+**Role/Database doesn't exist:**
+```bash
+# Recreate user and database
+psql postgres
+CREATE USER pier11 WITH PASSWORD 'password';
+CREATE DATABASE pier11_marina OWNER pier11;
+GRANT ALL PRIVILEGES ON DATABASE pier11_marina TO pier11;
+```
+
+**Connection refused:**
+- Ensure PostgreSQL is running: `brew services start postgresql@14`
+- Check if something else is using port 5432: `lsof -i :5432`
 
 ## Testing
 
