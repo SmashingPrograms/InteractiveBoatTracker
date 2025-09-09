@@ -286,7 +286,14 @@ JWT_ALGORITHM=HS256
 JWT_EXPIRE_MINUTES=30
 ```
 
-### Troubleshooting Database Issues
+### Environment Variables
+Copy `.env.example` to `.env` and configure:
+```env
+DATABASE_URL=postgresql://pier11:password@localhost/pier11_marina
+SECRET_KEY=your-secret-key
+JWT_ALGORITHM=HS256
+JWT_EXPIRE_MINUTES=30
+```
 
 **PostgreSQL won't start:**
 ```bash

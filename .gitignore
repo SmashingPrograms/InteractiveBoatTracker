@@ -41,3 +41,7 @@ build/
 # Misc
 *.swp
 *~ 
+
+# Text files
+prompt.txt
+aic.txt
