@@ -181,7 +181,7 @@ def default_setup():
     print("=" * 40)
     
     default_email = "admin@pier11marina.com"
-    default_password = "admin123"
+    default_password = "Admin123"
     default_name = "Admin User"
     
     print(f"Email: {default_email}")
@@ -189,7 +189,15 @@ def default_setup():
     print(f"Password: {default_password}")
     print()
     
-    return create_admin_user(default_email, default_password, default_name)
+    print("Attempting to create admin user...")
+    success = create_admin_user(default_email, default_password, default_name)
+    
+    if success:
+        print("✅ Default admin user creation completed successfully!")
+    else:
+        print("❌ Default admin user creation failed!")
+    
+    return success
 
 
 def show_manual_instructions():
@@ -467,4 +475,12 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    print("DEBUG: Script starting...")
+    try:
+        main()
+        print("DEBUG: Script completed successfully")
+    except Exception as e:
+        print(f"DEBUG: Script failed with exception: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
