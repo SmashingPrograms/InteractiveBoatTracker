@@ -483,6 +483,33 @@ pier11-marina-v2/
 - PostgreSQL 14+
 - Docker & Docker Compose
 
+### Database Setup
+
+1. **Install PostgreSQL** (if not already installed):
+   ```bash
+   brew install postgresql@14
+   brew services start postgresql@14
+   ```
+
+2. **Create Database User and Database**:
+   ```bash
+   # Connect to PostgreSQL
+   psql postgres
+   
+   # Inside PostgreSQL prompt, create user and database:
+   CREATE USER pier11 WITH PASSWORD 'password';
+   CREATE DATABASE pier11_marina OWNER pier11;
+   GRANT ALL PRIVILEGES ON DATABASE pier11_marina TO pier11;
+   
+   # Exit PostgreSQL
+   \q
+   ```
+
+3. **Verify Connection**:
+   ```bash
+   psql -U pier11 -d pier11_marina -h localhost
+   ```
+
 ### Quick Start
 ```bash
 # Clone repository
@@ -497,10 +524,21 @@ docker-compose up -d
 # Backend setup
 cd backend
 pip install -r requirements.txt
+
+# Initialize Alembic (if not already done)
+alembic init alembic
+
+# Edit alembic.ini to set database URL:
+# sqlalchemy.url = postgresql://pier11:password@localhost/pier11_marina
+
+# Create and apply migrations
+alembic revision --autogenerate -m "Initial migration"
 alembic upgrade head
+
+# Start the backend server
 uvicorn app.main:app --reload
 
-# Frontend setup
+# Frontend setup (in new terminal)
 cd frontend
 npm install
 npm run dev
@@ -509,11 +547,46 @@ npm run dev
 ### Environment Variables
 Copy `.env.example` to `.env` and configure:
 ```env
-DATABASE_URL=postgresql://user:pass@localhost/pier11
+DATABASE_URL=postgresql://pier11:password@localhost/pier11_marina
 SECRET_KEY=your-secret-key
 JWT_ALGORITHM=HS256
 JWT_EXPIRE_MINUTES=30
 ```
+
+### Environment Variables
+Copy `.env.example` to `.env` and configure:
+```env
+DATABASE_URL=postgresql://pier11:password@localhost/pier11_marina
+SECRET_KEY=your-secret-key
+JWT_ALGORITHM=HS256
+JWT_EXPIRE_MINUTES=30
+```
+
+**PostgreSQL won't start:**
+```bash
+# Check service status
+brew services list | grep postgresql
+
+# Restart PostgreSQL
+brew services stop postgresql@14
+brew services start postgresql@14
+
+# Check logs
+tail -f /usr/local/var/log/postgresql@14.log
+```
+
+**Role/Database doesn't exist:**
+```bash
+# Recreate user and database
+psql postgres
+CREATE USER pier11 WITH PASSWORD 'password';
+CREATE DATABASE pier11_marina OWNER pier11;
+GRANT ALL PRIVILEGES ON DATABASE pier11_marina TO pier11;
+```
+
+**Connection refused:**
+- Ensure PostgreSQL is running: `brew services start postgresql@14`
+- Check if something else is using port 5432: `lsof -i :5432`
 
 ## Testing
 
@@ -6220,6 +6293,125 @@ isort==5.12.0
 flake8==6.1.0
 mypy==1.7.1
 
+# backend/alembic.ini
+# A generic, single database configuration.
+
+[alembic]
+# path to migration scripts
+script_location = alembic
+
+# template used to generate migration file names; The default value is %%(rev)s_%%(slug)s
+# Uncomment the line below if you want the files to be prepended with date and time
+# see https://alembic.sqlalchemy.org/en/latest/tutorial.html#editing-the-ini-file
+# for all available tokens
+# file_template = %%(year)d_%%(month).2d_%%(day).2d_%%(hour).2d%%(minute).2d-%%(rev)s_%%(slug)s
+
+# sys.path path, will be prepended to sys.path if present.
+# defaults to the current working directory.
+prepend_sys_path = .
+
+# timezone to use when rendering the date within the migration file
+# as well as the filename.
+# If specified, requires the python-dateutil library that can be
+# installed by adding `alembic[tz]` to the pip requirements
+# string value is passed to dateutil.tz.gettz()
+# leave blank for localtime
+# timezone =
+
+# max length of characters to apply to the
+# "slug" field
+# truncate_slug_length = 40
+
+# set to 'true' to run the environment during
+# the 'revision' command, regardless of autogenerate
+# revision_environment = false
+
+# set to 'true' to allow .pyc and .pyo files without
+# a source .py file to be detected as revisions in the
+# versions/ directory
+# sourceless = false
+
+# version location specification; This defaults
+# to alembic/versions.  When using multiple version
+# directories, initial revisions must be specified with --version-path.
+# The path separator used here should be the separator specified by "version_path_separator" below.
+# version_locations = %(here)s/bar:%(here)s/bat:alembic/versions
+
+# version path separator; As mentioned above, this is the character used to split
+# version_locations. The default within new alembic.ini files is "os", which uses os.pathsep.
+# If this key is omitted entirely, it falls back to the legacy behavior of splitting on spaces and/or commas.
+# Valid values for version_path_separator are:
+#
+# version_path_separator = :
+# version_path_separator = ;
+# version_path_separator = space
+version_path_separator = os  # Use os.pathsep. Default configuration used for new projects.
+
+# set to 'true' to search source files recursively
+# in each "version_locations" directory
+# new in Alembic version 1.10
+# recursive_version_locations = false
+
+# the output encoding used when revision files
+# are written from script.py.mako
+# output_encoding = utf-8
+
+sqlalchemy.url = postgresql://pier11:password@localhost/pier11_marina
+
+
+[post_write_hooks]
+# post_write_hooks defines scripts or Python functions that are run
+# on newly generated revision scripts.  See the documentation for further
+# detail and examples
+
+# format using "black" - use the console_scripts runner, against the "black" entrypoint
+# hooks = black
+# black.type = console_scripts
+# black.entrypoint = black
+# black.options = -l 79 REVISION_SCRIPT_FILENAME
+
+# lint with attempts to fix using "ruff" - use the exec runner, execute a binary
+# hooks = ruff
+# ruff.type = exec
+# ruff.executable = %(here)s/.venv/bin/ruff
+# ruff.options = --fix REVISION_SCRIPT_FILENAME
+
+# Logging configuration
+[loggers]
+keys = root,sqlalchemy,alembic
+
+[handlers]
+keys = console
+
+[formatters]
+keys = generic
+
+[logger_root]
+level = WARN
+handlers = console
+qualname =
+
+[logger_sqlalchemy]
+level = WARN
+handlers =
+qualname = sqlalchemy.engine
+
+[logger_alembic]
+level = INFO
+handlers =
+qualname = alembic
+
+[handler_console]
+class = StreamHandler
+args = (sys.stderr,)
+level = NOTSET
+formatter = generic
+
+[formatter_generic]
+format = %(levelname)-5.5s [%(name)s] %(message)s
+datefmt = %H:%M:%S
+
+
 # backend/app/main.py
 # backend/app/main.py
 from fastapi import FastAPI
@@ -6447,15 +6639,14 @@ class User(Base):
 
 
 # backend/app/models/__init__.py
-# backend/app/models/__init__.py
+# app/models/__init__.py
+from ..core.database import Base
 from .user import User
 from .map import Map
 from .boat_listing import BoatListing
 from .boat_position import BoatPosition
 
-__all__ = ["User", "Map", "BoatListing", "BoatPosition"]
-
-
+__all__ = ["Base", "User", "Map", "BoatListing", "BoatPosition"]
 
 # backend/app/models/boat_position.py
 # backend/app/models/boat_position.py
@@ -6613,26 +6804,30 @@ class TokenData(BaseModel):
 
 
 # backend/app/schemas/__init__.py
-# backend/app/schemas/__init__.py
 from .user import UserCreate, UserUpdate, UserResponse, Token
 from .map import MapCreate, MapUpdate, MapResponse
 from .boat_listing import BoatListingCreate, BoatListingUpdate, BoatListingResponse
 from .boat_position import BoatPositionCreate, BoatPositionUpdate, BoatPositionResponse
+from .composite import BoatWithPosition, MapWithBoats
 
 __all__ = [
     "UserCreate", "UserUpdate", "UserResponse", "Token",
     "MapCreate", "MapUpdate", "MapResponse", 
     "BoatListingCreate", "BoatListingUpdate", "BoatListingResponse",
-    "BoatPositionCreate", "BoatPositionUpdate", "BoatPositionResponse"
+    "BoatPositionCreate", "BoatPositionUpdate", "BoatPositionResponse",
+    "BoatWithPosition", "MapWithBoats"
 ]
-
-
 
 # backend/app/schemas/boat_position.py
 # backend/app/schemas/boat_position.py
 from pydantic import BaseModel, Field, validator
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from datetime import datetime
+
+# Use TYPE_CHECKING to avoid circular imports
+if TYPE_CHECKING:
+    from .boat_listing import BoatListingResponse
+    from .map import MapResponse
 
 class BoatPositionBase(BaseModel):
     x: float = Field(default=200.0, ge=0)
@@ -6650,7 +6845,6 @@ class BoatPositionCreate(BoatPositionBase):
     
     @validator('color', 'stroke_color')
     def validate_colors(cls, v):
-        # Basic color validation - could be expanded
         valid_colors = [
             'red', 'blue', 'green', 'yellow', 'orange', 'purple', 'pink',
             'brown', 'gray', 'black', 'white', 'navy', 'teal', 'lime',
@@ -6679,17 +6873,6 @@ class BoatPositionResponse(BoatPositionBase):
     
     class Config:
         from_attributes = True
-
-# Composite schemas for complex operations
-class BoatWithPosition(BaseModel):
-    """Boat listing with its position data"""
-    boat: BoatListingResponse
-    position: Optional[BoatPositionResponse] = None
-
-class MapWithBoats(BaseModel):
-    """Map with all its boat positions"""
-    map: MapResponse
-    boats: list[BoatWithPosition] = []
 
 # backend/app/schemas/map.py
 # backend/app/schemas/map.py
@@ -6798,6 +6981,24 @@ class BoatListingResponse(BoatListingBase):
         from_attributes = True
 
 
+
+# backend/app/schemas/composite.py
+# backend/app/schemas/composite.py
+from pydantic import BaseModel
+from typing import Optional, List
+from .boat_listing import BoatListingResponse
+from .boat_position import BoatPositionResponse
+from .map import MapResponse
+
+class BoatWithPosition(BaseModel):
+    """Boat listing with its position data"""
+    boat: Optional[BoatListingResponse] = None
+    position: BoatPositionResponse
+
+class MapWithBoats(BaseModel):
+    """Map with all its boat positions"""
+    map: MapResponse
+    boats: List[BoatWithPosition] = []
 
 # backend/app/api/deps.py
 # backend/app/api/deps.py
@@ -6917,8 +7118,8 @@ from typing import Any, List
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from ...core.database import get_db
-from ...schemas.map import MapCreate, MapUpdate, MapResponse, MapWithBoats
-from ...schemas.boat_listing import BoatWithPosition
+from ...schemas.map import MapCreate, MapUpdate, MapResponse
+from ...schemas.composite import MapWithBoats, BoatWithPosition
 from ...services.map import MapService
 from ...services.boat import BoatService
 from ..deps import get_current_user, get_current_admin_user
@@ -8026,4 +8227,605 @@ def test_delete_boat(client: TestClient, staff_headers):
     assert response.status_code == 404
 
 
+
+# backend/alembic/script.py.mako
+"""${message}
+
+Revision ID: ${up_revision}
+Revises: ${down_revision | comma,n}
+Create Date: ${create_date}
+
+"""
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+${imports if imports else ""}
+
+# revision identifiers, used by Alembic.
+revision: str = ${repr(up_revision)}
+down_revision: Union[str, None] = ${repr(down_revision)}
+branch_labels: Union[str, Sequence[str], None] = ${repr(branch_labels)}
+depends_on: Union[str, Sequence[str], None] = ${repr(depends_on)}
+
+
+def upgrade() -> None:
+    ${upgrades if upgrades else "pass"}
+
+
+def downgrade() -> None:
+    ${downgrades if downgrades else "pass"}
+
+
+# backend/alembic/env.py
+from logging.config import fileConfig
+
+from sqlalchemy import engine_from_config
+from sqlalchemy import pool
+
+from alembic import context
+
+# this is the Alembic Config object, which provides
+# access to the values within the .ini file in use.
+config = context.config
+
+# Interpret the config file for Python logging.
+# This line sets up loggers basically.
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
+
+# add your model's MetaData object here
+# for 'autogenerate' support
+# from myapp import mymodel
+# target_metadata = mymodel.Base.metadata
+target_metadata = None
+
+# other values from the config, defined by the needs of env.py,
+# can be acquired:
+# my_important_option = config.get_main_option("my_important_option")
+# ... etc.
+
+
+def run_migrations_offline() -> None:
+    """Run migrations in 'offline' mode.
+
+    This configures the context with just a URL
+    and not an Engine, though an Engine is acceptable
+    here as well.  By skipping the Engine creation
+    we don't even need a DBAPI to be available.
+
+    Calls to context.execute() here emit the given string to the
+    script output.
+
+    """
+    url = config.get_main_option("sqlalchemy.url")
+    context.configure(
+        url=url,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
+    )
+
+    with context.begin_transaction():
+        context.run_migrations()
+
+
+def run_migrations_online() -> None:
+    """Run migrations in 'online' mode.
+
+    In this scenario we need to create an Engine
+    and associate a connection with the context.
+
+    """
+    connectable = engine_from_config(
+        config.get_section(config.config_ini_section, {}),
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+    )
+
+    with connectable.connect() as connection:
+        context.configure(
+            connection=connection, target_metadata=target_metadata
+        )
+
+        with context.begin_transaction():
+            context.run_migrations()
+
+
+if context.is_offline_mode():
+    run_migrations_offline()
+else:
+    run_migrations_online()
+
+
+# backend/alembic/README
+Generic single-database configuration.
+
+# scripts/create_admin.py
+#!/usr/bin/env python3
+"""
+Create initial admin user for Pier 11 Marina Interactive Map
+
+This script creates the first admin user needed to bootstrap the authentication system.
+Run this after setting up the database and running migrations.
+
+Usage:
+    python scripts/create_admin.py                    # Use default credentials
+    python scripts/create_admin.py --interactive     # Custom credentials
+    python scripts/create_admin.py --help           # Show help
+"""
+
+import sys
+import os
+import argparse
+import getpass
+from pathlib import Path
+
+# Add backend to Python path
+script_dir = Path(__file__).parent
+backend_dir = script_dir.parent / "backend"
+sys.path.insert(0, str(backend_dir))
+
+try:
+    from app.core.database import SessionLocal
+    from app.models.user import User, UserRole
+    from app.core.security import get_password_hash
+    from app.services.auth import AuthService
+except ImportError as e:
+    print(f"Error importing backend modules: {e}")
+    print("Make sure you're running this from the project root directory")
+    print("and that you've installed the backend dependencies:")
+    print("  cd backend && pip install -r requirements.txt")
+    sys.exit(1)
+
+
+def check_database_connection():
+    """Test database connection before proceeding"""
+    try:
+        from sqlalchemy import text
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db.close()
+        return True
+    except Exception as e:
+        print(f"Database connection failed: {e}")
+        print("\nMake sure:")
+        print("1. PostgreSQL is running: brew services start postgresql@14")
+        print("2. Database exists: createdb pier11_marina")
+        print("3. User has access: GRANT ALL PRIVILEGES ON DATABASE pier11_marina TO pier11;")
+        print("4. Migrations are applied: alembic upgrade head")
+        return False
+
+
+def validate_email(email):
+    """Basic email validation"""
+    import re
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(pattern, email) is not None
+
+
+def validate_password(password):
+    """Password strength validation"""
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters long"
+    if not any(c.isdigit() for c in password):
+        return False, "Password must contain at least one number"
+    if not any(c.islower() for c in password):
+        return False, "Password must contain at least one lowercase letter"
+    if not any(c.isupper() for c in password):
+        return False, "Password must contain at least one uppercase letter"
+    return True, "Password is valid"
+
+
+def create_admin_user(email, password, full_name, interactive=False):
+    """Create admin user with given credentials"""
+    
+    if not check_database_connection():
+        return False
+    
+    db = SessionLocal()
+    try:
+        # Check if any users exist
+        user_count = db.query(User).count()
+        if user_count > 0:
+            existing_admin = db.query(User).filter(
+                User.role == UserRole.ADMIN
+            ).first()
+            
+            if existing_admin:
+                print(f"Admin user already exists: {existing_admin.email}")
+                if not interactive:
+                    print("Use --interactive flag to create additional admin users")
+                    return True
+        
+        # Check if this specific email exists
+        existing_user = db.query(User).filter(User.email == email).first()
+        if existing_user:
+            print(f"User with email {email} already exists")
+            return False
+        
+        # Validate inputs
+        if not validate_email(email):
+            print(f"Invalid email format: {email}")
+            return False
+        
+        is_valid, message = validate_password(password)
+        if not is_valid:
+            print(f"Password validation failed: {message}")
+            return False
+        
+        # Create admin user
+        admin_user = User(
+            email=email,
+            hashed_password=get_password_hash(password),
+            full_name=full_name,
+            role=UserRole.ADMIN,
+            is_active=True
+        )
+        
+        db.add(admin_user)
+        db.commit()
+        
+        print(f"✅ Admin user created successfully!")
+        print(f"   Email: {email}")
+        print(f"   Name: {full_name}")
+        print(f"   Role: admin")
+        print(f"\nYou can now:")
+        print(f"1. Start the server: uvicorn app.main:app --reload")
+        print(f"2. Visit API docs: http://localhost:8000/docs")
+        print(f"3. Click 'Authorize' and login with these credentials")
+        
+        if password == "admin123":
+            print(f"\n⚠️  SECURITY WARNING: Change the default password after first login!")
+        
+        return True
+        
+    except Exception as e:
+        db.rollback()
+        print(f"Error creating admin user: {e}")
+        return False
+    finally:
+        db.close()
+
+
+def interactive_setup():
+    """Interactive admin user creation"""
+    print("🔧 Interactive Admin User Setup")
+    print("=" * 40)
+    
+    while True:
+        email = input("Admin email: ").strip()
+        if validate_email(email):
+            break
+        print("Invalid email format. Please try again.")
+    
+    full_name = input("Full name: ").strip()
+    if not full_name:
+        full_name = "Admin User"
+    
+    while True:
+        password = getpass.getpass("Password: ")
+        password_confirm = getpass.getpass("Confirm password: ")
+        
+        if password != password_confirm:
+            print("Passwords don't match. Please try again.")
+            continue
+        
+        is_valid, message = validate_password(password)
+        if is_valid:
+            break
+        print(f"Password requirements not met: {message}")
+    
+    return create_admin_user(email, password, full_name, interactive=True)
+
+
+def default_setup():
+    """Create admin user with default credentials"""
+    print("🔧 Creating default admin user...")
+    print("=" * 40)
+    
+    default_email = "admin@pier11marina.com"
+    default_password = "Admin123"
+    default_name = "Admin User"
+    
+    print(f"Email: {default_email}")
+    print(f"Name: {default_name}")
+    print(f"Password: {default_password}")
+    print()
+    
+    print("Attempting to create admin user...")
+    success = create_admin_user(default_email, default_password, default_name)
+    
+    if success:
+        print("✅ Default admin user creation completed successfully!")
+    else:
+        print("❌ Default admin user creation failed!")
+    
+    return success
+
+
+def show_manual_instructions():
+    """Show manual SQL instructions as fallback"""
+    print("\n📝 Manual Setup Instructions")
+    print("=" * 40)
+    print("If the script fails, you can create the admin user manually:")
+    print()
+    print("1. Connect to the database:")
+    print("   psql -U pier11 -d pier11_marina")
+    print()
+    print("2. Insert admin user (replace the hash with a real one):")
+    print("   INSERT INTO users (email, hashed_password, full_name, role, is_active, created_at)")
+    print("   VALUES (")
+    print("     'admin@pier11marina.com',")
+    print("     '$2b$12$placeholder_hash_replace_this',")
+    print("     'Admin User',")
+    print("     'admin',")
+    print("     true,")
+    print("     NOW()")
+    print("   );")
+    print()
+    print("3. Generate password hash in Python:")
+    print("   from app.core.security import get_password_hash")
+    print("   print(get_password_hash('your_password'))")
+
+
+def run_comprehensive_tests():
+    """Run comprehensive tests of all script functionality"""
+    print("🧪 Running Comprehensive Tests")
+    print("=" * 50)
+    
+    tests_passed = 0
+    tests_failed = 0
+    
+    def test_case(name, test_func, *args, **kwargs):
+        nonlocal tests_passed, tests_failed
+        print(f"\n📋 Testing: {name}")
+        try:
+            result = test_func(*args, **kwargs)
+            if result:
+                print(f"   ✅ PASS")
+                tests_passed += 1
+            else:
+                print(f"   ❌ FAIL")
+                tests_failed += 1
+        except Exception as e:
+            print(f"   ❌ ERROR: {e}")
+            tests_failed += 1
+    
+    # Test 1: Database connection
+    test_case("Database Connection", check_database_connection)
+    
+    # Test 2: Email validation
+    test_case("Valid Email", lambda: validate_email("test@example.com"))
+    test_case("Invalid Email (no @)", lambda: not validate_email("invalid-email"))
+    test_case("Invalid Email (no domain)", lambda: not validate_email("test@"))
+    test_case("Invalid Email (no TLD)", lambda: not validate_email("test@domain"))
+    
+    # Test 3: Password validation
+    def test_password_validation():
+        valid_cases = [
+            "Password123",
+            "Complex1Pass",
+            "MySecure123"
+        ]
+        invalid_cases = [
+            "short",           # Too short
+            "nouppercase123",  # No uppercase
+            "NOLOWERCASE123",  # No lowercase
+            "NoNumbers",       # No numbers
+            "123456789"        # No letters
+        ]
+        
+        for pwd in valid_cases:
+            is_valid, _ = validate_password(pwd)
+            if not is_valid:
+                return False
+        
+        for pwd in invalid_cases:
+            is_valid, _ = validate_password(pwd)
+            if is_valid:
+                return False
+        
+        return True
+    
+    test_case("Password Validation Logic", test_password_validation)
+    
+    # Test 4: Database user operations (read-only checks)
+    def test_user_queries():
+        try:
+            db = SessionLocal()
+            # Test basic query operations without modifying data
+            user_count = db.query(User).count()
+            admin_count = db.query(User).filter(User.role == UserRole.ADMIN).count()
+            
+            # Test that we can query user by email (should return None for non-existent)
+            test_user = db.query(User).filter(User.email == "nonexistent@test.com").first()
+            
+            db.close()
+            return True
+        except Exception as e:
+            print(f"      Database query error: {e}")
+            return False
+    
+    test_case("Database User Queries", test_user_queries)
+    
+    # Test 5: Password hashing functionality
+    def test_password_hashing():
+        try:
+            test_password = "TestPassword123"
+            hashed = get_password_hash(test_password)
+            
+            # Check that hash is generated and is different from original
+            if not hashed or hashed == test_password:
+                return False
+            
+            # Check that hash starts with bcrypt prefix
+            if not hashed.startswith("$2b$"):
+                return False
+            
+            return True
+        except Exception as e:
+            print(f"      Password hashing error: {e}")
+            return False
+    
+    test_case("Password Hashing", test_password_hashing)
+    
+    # Test 6: User enumeration (check existing users safely)
+    def test_existing_users():
+        try:
+            db = SessionLocal()
+            existing_users = db.query(User).all()
+            
+            print(f"      Found {len(existing_users)} existing users")
+            for user in existing_users[:3]:  # Show first 3 users only
+                print(f"      - {user.email} ({user.role.value})")
+            
+            if len(existing_users) > 3:
+                print(f"      ... and {len(existing_users) - 3} more")
+            
+            db.close()
+            return True
+        except Exception as e:
+            print(f"      User enumeration error: {e}")
+            return False
+    
+    test_case("Existing Users Check", test_existing_users)
+    
+    # Test 7: Import verification
+    def test_imports():
+        try:
+            # Test that all required modules can be imported
+            from app.models.user import UserRole
+            from app.core.security import get_password_hash
+            from app.services.auth import AuthService
+            
+            # Test enum values
+            if UserRole.ADMIN.value != "admin":
+                return False
+            if UserRole.STAFF.value != "staff":
+                return False
+            
+            return True
+        except Exception as e:
+            print(f"      Import error: {e}")
+            return False
+    
+    test_case("Module Imports", test_imports)
+    
+    # Test 8: Dry-run user creation (validation only)
+    def test_dry_run_creation():
+        try:
+            # Test all the validation steps without actually creating a user
+            test_email = "dryrun@test.com"
+            test_password = "DryRun123"
+            test_name = "Dry Run User"
+            
+            # Email validation
+            if not validate_email(test_email):
+                return False
+            
+            # Password validation
+            is_valid, _ = validate_password(test_password)
+            if not is_valid:
+                return False
+            
+            # Password hashing
+            hashed = get_password_hash(test_password)
+            if not hashed:
+                return False
+            
+            # Database connection check
+            db = SessionLocal()
+            existing = db.query(User).filter(User.email == test_email).first()
+            db.close()
+            
+            # Should not exist (we're not creating it)
+            return existing is None
+            
+        except Exception as e:
+            print(f"      Dry run error: {e}")
+            return False
+    
+    test_case("Dry Run User Creation", test_dry_run_creation)
+    
+    # Summary
+    print(f"\n📊 Test Results Summary")
+    print("=" * 30)
+    print(f"Tests passed: {tests_passed}")
+    print(f"Tests failed: {tests_failed}")
+    print(f"Total tests:  {tests_passed + tests_failed}")
+    
+    if tests_failed == 0:
+        print(f"\n🎉 All tests passed! The admin creation system is working correctly.")
+        return True
+    else:
+        print(f"\n⚠️  {tests_failed} tests failed. Check the errors above.")
+        print("Common issues:")
+        print("- Database not running or not accessible")
+        print("- Missing Python dependencies")
+        print("- Database schema not migrated")
+        print("- Permission issues")
+        return False
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Create initial admin user for Pier 11 Marina",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=__doc__
+    )
+    parser.add_argument(
+        "--interactive", "-i",
+        action="store_true",
+        help="Interactive setup with custom credentials"
+    )
+    parser.add_argument(
+        "--manual",
+        action="store_true", 
+        help="Show manual setup instructions"
+    )
+    parser.add_argument(
+        "--test",
+        action="store_true",
+        help="Run comprehensive tests of all script functionality"
+    )
+    
+    args = parser.parse_args()
+    
+    print("🚢 Pier 11 Marina - Admin User Setup")
+    print("=" * 50)
+    
+    if args.test:
+        success = run_comprehensive_tests()
+        if not success:
+            sys.exit(1)
+        return
+    
+    if args.manual:
+        show_manual_instructions()
+        return
+    
+    if args.interactive:
+        success = interactive_setup()
+    else:
+        success = default_setup()
+    
+    if not success:
+        print("\n❌ Admin user creation failed")
+        show_manual_instructions()
+        sys.exit(1)
+    
+    print("\n🎉 Setup complete! Your admin user is ready.")
+
+
+if __name__ == "__main__":
+    print("DEBUG: Script starting...")
+    try:
+        main()
+        print("DEBUG: Script completed successfully")
+    except Exception as e:
+        print(f"DEBUG: Script failed with exception: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
